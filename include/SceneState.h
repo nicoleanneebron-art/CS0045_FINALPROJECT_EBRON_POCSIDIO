@@ -34,6 +34,7 @@ extern int windowHeight;
 extern float elapsedSeconds;
 extern float lastFrameSeconds;
 extern bool keys[256];
+extern bool islandOrbiting;
 
 extern float cameraX;
 extern float cameraY;
@@ -53,8 +54,14 @@ extern GLuint moundVBO;
 extern GLsizei moundVertexCount;
 extern GLuint islandVBO;
 extern GLsizei islandVertexCount;
+extern GLuint centralTreeVBO;
+extern GLsizei centralTreeVertexCount;
 extern GLuint landVBO;
 extern GLsizei landVertexCount;
+extern GLuint rockVBO;
+extern GLsizei rockVertexCount;
+extern GLuint propVBO;
+extern GLsizei propVertexCount;
 extern GLuint waterVBO;
 extern GLsizei waterVertexCount;
 extern GLuint waterTexture;
@@ -64,9 +71,6 @@ extern GLuint islandGrassVBO;
 extern GLsizei islandGrassVertexCount;
 extern std::vector<MeshVertex> islandGrassBaseVertices;
 extern std::vector<MeshVertex> animatedIslandGrassVertices;
-extern std::vector<MeshVertex> grassBaseVertices;
-extern std::vector<MeshVertex> animatedGrassVertices;
 extern std::vector<WaterVertex> animatedWaterVertices;
-extern unsigned int grassAnimationFrame;
 
 }

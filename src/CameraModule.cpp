@@ -57,7 +57,9 @@ void update(float deltaSeconds) {
         inputX = inputX / inputLength * cameraSpeed;
         inputZ = inputZ / inputLength * cameraSpeed;
     }
-    const float response = 1.0f - std::exp(-12.0f * deltaSeconds);
+    // Respond quickly to keyboard changes while remaining frame-rate
+    // independent. The old response made movement feel sluggish at 60 Hz.
+    const float response = 1.0f - std::exp(-24.0f * deltaSeconds);
     velocityX += (inputX - velocityX) * response;
     velocityZ += (inputZ - velocityZ) * response;
     scene_state::cameraX += velocityX * deltaSeconds;
@@ -73,6 +75,8 @@ void timer(int) {
     delta = std::fmin(delta, 0.05f);
     update(delta);
     glutPostRedisplay();
+    // Keep redraw scheduling at 60 Hz so slow frames cannot backlog timer
+    // redisplays. The faster acceleration below still makes input responsive.
     glutTimerFunc(16, timer, 0);
 }
 
@@ -109,6 +113,10 @@ void specialDown(int key, int, int) {
 }
 
 void mouseButton(int button, int state, int, int) {
+    if (state == GLUT_DOWN && button == GLUT_LEFT_BUTTON) {
+        scene_state::islandOrbiting = !scene_state::islandOrbiting;
+        return;
+    }
     if (state == GLUT_DOWN && (button == 3 || button == 4)) {
         scene_state::cameraFieldOfView += button == 3 ? -3.0f : 3.0f;
         scene_state::cameraFieldOfView = std::fmax(

@@ -7,6 +7,7 @@ int windowHeight = 700;
 float elapsedSeconds = 0.0f;
 float lastFrameSeconds = 0.0f;
 bool keys[256] = {};
+bool islandOrbiting = false;
 
 float cameraX = 0.0f;
 float cameraY = 3.0f;
@@ -26,8 +27,14 @@ GLuint moundVBO = 0;
 GLsizei moundVertexCount = 0;
 GLuint islandVBO = 0;
 GLsizei islandVertexCount = 0;
+GLuint centralTreeVBO = 0;
+GLsizei centralTreeVertexCount = 0;
 GLuint landVBO = 0;
 GLsizei landVertexCount = 0;
+GLuint rockVBO = 0;
+GLsizei rockVertexCount = 0;
+GLuint propVBO = 0;
+GLsizei propVertexCount = 0;
 GLuint waterVBO = 0;
 GLsizei waterVertexCount = 0;
 GLuint waterTexture = 0;
@@ -37,9 +44,6 @@ GLuint islandGrassVBO = 0;
 GLsizei islandGrassVertexCount = 0;
 std::vector<MeshVertex> islandGrassBaseVertices;
 std::vector<MeshVertex> animatedIslandGrassVertices;
-std::vector<MeshVertex> grassBaseVertices;
-std::vector<MeshVertex> animatedGrassVertices;
 std::vector<WaterVertex> animatedWaterVertices;
-unsigned int grassAnimationFrame = 0;
 
 }

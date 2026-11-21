@@ -54,38 +54,47 @@ void drawLandmass() {
     glDisable(GL_COLOR_MATERIAL);
 }
 
+void drawRocks() {
+    if (scene_state::rockVertexCount == 0) return;
+    rendering::setMaterial({0.32f, 0.30f, 0.26f}, {0.08f, 0.075f, 0.06f}, 4.0f);
+    glEnable(GL_COLOR_MATERIAL);
+    glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_NORMAL_ARRAY);
+    glEnableClientState(GL_COLOR_ARRAY);
+    glBindBuffer(GL_ARRAY_BUFFER, scene_state::rockVBO);
+    glVertexPointer(3, GL_FLOAT, sizeof(scene_state::MeshVertex), reinterpret_cast<void*>(0));
+    glNormalPointer(GL_FLOAT, sizeof(scene_state::MeshVertex), reinterpret_cast<void*>(3 * sizeof(GLfloat)));
+    glColorPointer(3, GL_FLOAT, sizeof(scene_state::MeshVertex), reinterpret_cast<void*>(6 * sizeof(GLfloat)));
+    glDrawArrays(GL_TRIANGLES, 0, scene_state::rockVertexCount);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisable(GL_COLOR_MATERIAL);
+}
+
+void drawProps() {
+    if (scene_state::propVertexCount == 0) return;
+    rendering::setMaterial({0.34f, 0.38f, 0.16f}, {0.07f, 0.08f, 0.035f}, 5.0f);
+    glEnable(GL_COLOR_MATERIAL);
+    glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_NORMAL_ARRAY);
+    glEnableClientState(GL_COLOR_ARRAY);
+    glBindBuffer(GL_ARRAY_BUFFER, scene_state::propVBO);
+    glVertexPointer(3, GL_FLOAT, sizeof(scene_state::MeshVertex), reinterpret_cast<void*>(0));
+    glNormalPointer(GL_FLOAT, sizeof(scene_state::MeshVertex), reinterpret_cast<void*>(3 * sizeof(GLfloat)));
+    glColorPointer(3, GL_FLOAT, sizeof(scene_state::MeshVertex), reinterpret_cast<void*>(6 * sizeof(GLfloat)));
+    glDrawArrays(GL_TRIANGLES, 0, scene_state::propVertexCount);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    glDisable(GL_COLOR_MATERIAL);
+}
+
 void drawGrass() {
-    const bool bufferSizeChanged =
-        scene_state::animatedGrassVertices.size() != scene_state::grassBaseVertices.size();
-    if (bufferSizeChanged) {
-        scene_state::animatedGrassVertices.resize(scene_state::grassBaseVertices.size());
-    }
-    const bool updateAnimation = bufferSizeChanged ||
-                                 ((scene_state::grassAnimationFrame++ & 1u) == 0u);
-    if (updateAnimation) {
-        scene_state::animatedGrassVertices = scene_state::grassBaseVertices;
-    }
-    std::vector<scene_state::MeshVertex>& animatedGrass = scene_state::animatedGrassVertices;
-    constexpr std::size_t verticesPerTuft = 90;
-    if (updateAnimation) for (std::size_t tuftStart = 0; tuftStart < animatedGrass.size(); tuftStart += verticesPerTuft) {
-        const std::size_t tuftEnd = std::min(tuftStart + verticesPerTuft, animatedGrass.size());
-        float rootY = animatedGrass[tuftStart].y;
-        for (std::size_t i = tuftStart + 1; i < tuftEnd; ++i)
-            rootY = std::min(rootY, animatedGrass[i].y);
-        const float phase = animatedGrass[tuftStart].x * 0.42f + animatedGrass[tuftStart].z * 0.31f;
-        for (std::size_t i = tuftStart; i < tuftEnd; ++i) {
-            const float height = std::max(0.0f, animatedGrass[i].y - rootY);
-            const float bend = std::min(1.0f, height / 0.30f);
-            animatedGrass[i].x += std::sin(scene_state::elapsedSeconds * 1.55f + phase) * 0.16f * bend;
-            animatedGrass[i].z += std::cos(scene_state::elapsedSeconds * 1.15f + phase * 1.3f) * 0.055f * bend;
-        }
-    }
-    if (updateAnimation) {
-        glBindBuffer(GL_ARRAY_BUFFER, scene_state::grassVBO);
-        glBufferSubData(GL_ARRAY_BUFFER, 0,
-                        static_cast<GLsizeiptr>(animatedGrass.size() * sizeof(scene_state::MeshVertex)),
-                        animatedGrass.data());
-    }
     rendering::setMaterial({0.20f, 0.58f, 0.10f}, {0.035f, 0.12f, 0.018f}, 2.0f);
     glEnable(GL_COLOR_MATERIAL);
     glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);

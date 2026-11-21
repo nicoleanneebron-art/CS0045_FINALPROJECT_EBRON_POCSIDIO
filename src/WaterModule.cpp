@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "RenderingModule.h"
+#include "SceneConfig.h"
 #include "SceneState.h"
 #include "WaterModule.h"
 
@@ -12,7 +13,7 @@ namespace water {
 
 float waterSurfaceHeight(float x, float z) {
     const float time = scene_state::elapsedSeconds;
-    return -3.18f +
+    return scene::waterLevel +
            0.045f * std::sin(x * 0.55f + time * 1.6f) +
            0.035f * std::cos(z * 0.45f - time * 1.2f) +
            0.020f * std::sin((x + z) * 0.30f + time * 1.9f);

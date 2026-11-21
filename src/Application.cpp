@@ -184,12 +184,120 @@ void buildGeometryVBOs() {
                  islandVertices.data(), GL_STATIC_DRAW);
     islandVertexCount = static_cast<GLsizei>(islandVertices.size());
 
+    // One static, low-poly tree for the dominant center island. The trunk,
+    // branches, and layered foliage share one VBO and never animate.
+    std::vector<MeshVertex> centralTreeVertices;
+    const auto addTreeSegment = [&](float x0, float y0, float z0,
+                                    float x1, float y1, float z1,
+                                    float radius0, float radius1,
+                                    const float color[3]) {
+        constexpr int slices = 7;
+        const float dx = x1 - x0;
+        const float dy = y1 - y0;
+        const float dz = z1 - z0;
+        const float length = std::sqrt(dx * dx + dy * dy + dz * dz);
+        const float ux = std::fabs(dy) < 0.9f ? 0.0f : 1.0f;
+        const float uy = std::fabs(dy) < 0.9f ? 1.0f : 0.0f;
+        const float uz = 0.0f;
+        float bx = uy * dz - uz * dy;
+        float by = uz * dx - ux * dz;
+        float bz = ux * dy - uy * dx;
+        const float basisLength = std::sqrt(bx * bx + by * by + bz * bz);
+        bx /= basisLength; by /= basisLength; bz /= basisLength;
+        const float cx = dy * bz - dz * by;
+        const float cy = dz * bx - dx * bz;
+        const float cz = dx * by - dy * bx;
+        for (int slice = 0; slice < slices; ++slice) {
+            const int next = (slice + 1) % slices;
+            const float a0 = 2.0f * PI * slice / slices;
+            const float a1 = 2.0f * PI * next / slices;
+            const auto makeVertex = [&](float t, float angle, float radius) {
+                const float c = std::cos(angle);
+                const float s = std::sin(angle);
+                const float nx = bx * c + cx * s;
+                const float ny = by * c + cy * s;
+                const float nz = bz * c + cz * s;
+                return MeshVertex{x0 + dx * t + nx * radius,
+                                  y0 + dy * t + ny * radius,
+                                  z0 + dz * t + nz * radius,
+                                  nx, ny, nz, color[0], color[1], color[2]};
+            };
+            const MeshVertex a = makeVertex(0.0f, a0, radius0);
+            const MeshVertex b = makeVertex(1.0f, a0, radius1);
+            const MeshVertex c = makeVertex(1.0f, a1, radius1);
+            const MeshVertex d = makeVertex(0.0f, a1, radius0);
+            centralTreeVertices.insert(centralTreeVertices.end(), {a, b, c, a, c, d});
+        }
+    };
+    const auto addFoliageCluster = [&](float centerX, float centerY, float centerZ,
+                                       float radiusX, float radiusY, float radiusZ,
+                                       const float color[3]) {
+        constexpr int rings = 3;
+        constexpr int slices = 8;
+        for (int ring = 0; ring < rings; ++ring) {
+            const float lower = -0.5f * PI + PI * ring / rings;
+            const float upper = -0.5f * PI + PI * (ring + 1) / rings;
+            for (int slice = 0; slice < slices; ++slice) {
+                const float a0 = 2.0f * PI * slice / slices;
+                const float a1 = 2.0f * PI * (slice + 1) / slices;
+                const auto vertex = [&](float latitude, float longitude) {
+                    const float horizontal = std::cos(latitude);
+                    const float nx = horizontal * std::cos(longitude);
+                    const float ny = std::sin(latitude);
+                    const float nz = horizontal * std::sin(longitude);
+                    return MeshVertex{centerX + radiusX * nx,
+                                      centerY + radiusY * ny,
+                                      centerZ + radiusZ * nz,
+                                      nx, ny, nz, color[0], color[1], color[2]};
+                };
+                const MeshVertex a = vertex(lower, a0);
+                const MeshVertex b = vertex(upper, a0);
+                const MeshVertex c = vertex(upper, a1);
+                const MeshVertex d = vertex(lower, a1);
+                centralTreeVertices.insert(centralTreeVertices.end(), {a, b, c, a, c, d});
+            }
+        }
+    };
+    const float trunkColor[] = {0.25f, 0.10f, 0.045f};
+    const float branchColor[] = {0.31f, 0.13f, 0.055f};
+    const float leafColors[][3] = {
+        {0.48f, 0.18f, 0.045f}, {0.68f, 0.32f, 0.055f},
+        {0.82f, 0.49f, 0.10f}, {0.52f, 0.22f, 0.06f}
+    };
+    addTreeSegment(0.0f, 0.02f, 0.0f, 0.0f, 1.65f, 0.0f,
+                   0.16f, 0.10f, trunkColor);
+    addTreeSegment(0.0f, 1.02f, 0.0f, -0.55f, 1.52f, 0.03f,
+                   0.085f, 0.045f, branchColor);
+    addTreeSegment(0.0f, 1.18f, 0.0f, 0.56f, 1.66f, -0.02f,
+                   0.08f, 0.04f, branchColor);
+    addTreeSegment(0.0f, 1.40f, 0.0f, -0.28f, 1.98f, -0.08f,
+                   0.065f, 0.032f, branchColor);
+    addTreeSegment(0.0f, 1.52f, 0.0f, 0.30f, 2.10f, 0.08f,
+                   0.06f, 0.03f, branchColor);
+    addFoliageCluster(-0.45f, 1.55f, 0.02f, 0.72f, 0.50f, 0.62f, leafColors[0]);
+    addFoliageCluster(0.43f, 1.70f, -0.05f, 0.68f, 0.48f, 0.58f, leafColors[1]);
+    addFoliageCluster(-0.18f, 1.98f, -0.08f, 0.64f, 0.52f, 0.55f, leafColors[2]);
+    addFoliageCluster(0.28f, 2.20f, 0.06f, 0.52f, 0.45f, 0.48f, leafColors[1]);
+    addFoliageCluster(-0.06f, 2.42f, 0.0f, 0.40f, 0.38f, 0.38f, leafColors[2]);
+    addFoliageCluster(0.72f, 1.48f, 0.12f, 0.40f, 0.32f, 0.36f, leafColors[3]);
+
+    glGenBuffers(1, &centralTreeVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, centralTreeVBO);
+    glBufferData(GL_ARRAY_BUFFER,
+                 static_cast<GLsizeiptr>(centralTreeVertices.size() * sizeof(MeshVertex)),
+                 centralTreeVertices.data(), GL_STATIC_DRAW);
+    centralTreeVertexCount = static_cast<GLsizei>(centralTreeVertices.size());
+
     std::vector<MeshVertex> landVertices;
     std::vector<MeshVertex> grassVertices;
     constexpr float cellSize = 0.25f;
     constexpr int landCells = 240;
-    constexpr float lakeRadius = 3.65f;
+    // Keep one compact central lake for the next scene pass.
+    constexpr float lakeRadius = 10.50f;
     constexpr float landBottomY = -5.50f;
+    const std::size_t cellCount = static_cast<std::size_t>(landCells) * landCells;
+    // Six full-coverage blades per cell, with one segment per blade.
+    grassVertices.reserve(cellCount * 36);
     const auto terrainHeight = [](float x, float z) {
         const float distance = std::sqrt(x * x + z * z);
         const float patchNoise = std::sin(x * 0.62f) +
@@ -197,8 +305,8 @@ void buildGeometryVBOs() {
                                  0.55f * std::sin((x - z) * 0.35f);
         const float patchEdgeDip = std::fmax(0.0f,
             std::fmin(1.0f, (0.25f - patchNoise) / 0.60f));
-        const float lakeEdgeDip = std::fmax(0.0f,
-            std::fmin(1.0f, (4.85f - distance) / 1.20f));
+         const float lakeEdgeDip = std::fmax(0.0f,
+            std::fmin(1.0f, (5.20f - distance) / 1.00f));
         const float outerBasin = std::fmax(0.0f,
             std::fmin(1.0f, (distance - 11.0f) / 7.0f));
         return -2.67f + 0.16f * std::sin(x * 1.35f) +
@@ -226,9 +334,15 @@ void buildGeometryVBOs() {
         const float toneNoise = 0.5f + 0.5f *
             std::sin(x * 0.22f + 1.4f * std::cos(z * 0.17f));
         const float warmTone = 0.5f + 0.5f * std::sin(x * 0.13f - z * 0.19f);
+        const float meadowPatch = 0.5f + 0.5f *
+            std::sin(x * 0.17f + std::cos(z * 0.11f) * 1.8f);
         float red = 0.08f + 0.20f * toneNoise;
         float green = 0.20f + 0.24f * toneNoise;
         float blue = 0.045f + 0.055f * toneNoise;
+        // Broad color variation creates meadow patches without extra meshes.
+        red += (meadowPatch - 0.5f) * 0.035f;
+        green += (meadowPatch - 0.5f) * 0.075f;
+        blue += (meadowPatch - 0.5f) * 0.012f;
         if (warmTone > 0.72f) {
             red += 0.07f;
             green -= 0.025f;
@@ -249,7 +363,7 @@ void buildGeometryVBOs() {
                                  red, green, blue});
     };
 
-    // Irregular land patches leave a central lake and exposed grid channels.
+    // Keep only the compact central lake; the surrounding ground is continuous.
     for (int row = -landCells / 2; row < landCells / 2; ++row) {
         for (int column = -landCells / 2; column < landCells / 2; ++column) {
             const float x = column * cellSize;
@@ -257,16 +371,8 @@ void buildGeometryVBOs() {
             const float centerX = x + cellSize * 0.5f;
             const float centerZ = z + cellSize * 0.5f;
             const float distance = std::sqrt(centerX * centerX + centerZ * centerZ);
-            const float edgeLakeNoise = std::sin(centerX * 0.35f) +
-                                        std::cos(centerZ * 0.28f) +
-                                        0.45f * std::sin((centerX + centerZ) * 0.22f);
-            const float patchNoise = std::sin(centerX * 0.62f) +
-                                     std::cos(centerZ * 0.48f) +
-                                     0.55f * std::sin((centerX - centerZ) * 0.35f);
             const bool centralLake = distance < lakeRadius;
-            const bool outerLake = distance > 14.0f && edgeLakeNoise > 0.70f;
-            const bool patchLake = patchNoise <= -0.70f;
-            if (centralLake || outerLake || patchLake) {
+            if (centralLake) {
                 continue;
             }
             const float x1 = x;
@@ -292,16 +398,16 @@ void buildGeometryVBOs() {
             const float leanX = (static_cast<float>((randomCell / 29u) % 100u) / 100.0f - 0.5f) * 0.14f;
             const float leanZ = (static_cast<float>((randomCell / 37u) % 100u) / 100.0f - 0.5f) * 0.14f;
             const unsigned int grassPalette = randomCell % 5u;
-            const float grassRed[] = {0.12f, 0.20f, 0.30f, 0.24f, 0.15f};
-            const float grassGreen[] = {0.34f, 0.46f, 0.52f, 0.40f, 0.29f};
-            const float grassBlue[] = {0.055f, 0.08f, 0.10f, 0.045f, 0.035f};
-            const float tintRed = grassRed[grassPalette];
-            const float tintGreen = grassGreen[grassPalette];
-            const float tintBlue = grassBlue[grassPalette];
+            const float grassRed[] = {0.10f, 0.16f, 0.22f, 0.25f, 0.14f};
+            const float grassGreen[] = {0.31f, 0.43f, 0.49f, 0.38f, 0.28f};
+            const float grassBlue[] = {0.035f, 0.055f, 0.075f, 0.045f, 0.025f};
+            float tintRed = grassRed[grassPalette];
+            float tintGreen = grassGreen[grassPalette];
+            float tintBlue = grassBlue[grassPalette];
 
             const auto addCurvedGrassBlade = [&](float angle, float height, float width,
                                                  float lean, float red, float green, float blue) {
-                constexpr int segments = 3;
+                constexpr int segments = 1;
                 for (int segment = 0; segment < segments; ++segment) {
                     const float t0 = static_cast<float>(segment) / segments;
                     const float t1 = static_cast<float>(segment + 1) / segments;
@@ -390,6 +496,69 @@ void buildGeometryVBOs() {
             addLandVertex(x1, landBottomY, z1, 0.0f, -1.0f, 0.0f);
             addLandVertex(x2, landBottomY, z1, 0.0f, -1.0f, 0.0f);
             addLandVertex(x2, landBottomY, z2, 0.0f, -1.0f, 0.0f);
+        }
+    }
+
+    // Static low-poly ruin stones: clustered, irregular pillars that read as
+    // weathered remnants without adding per-frame work.
+    std::vector<MeshVertex> rockVertices;
+    constexpr int rockSlices = 7;
+    const float rockColors[][3] = {
+        {0.28f, 0.27f, 0.24f}, {0.38f, 0.34f, 0.27f},
+        {0.22f, 0.25f, 0.23f}
+    };
+    rockVertices.reserve(18u * 6u * rockSlices * 6u);
+    const auto addRuinRock = [&](float centerX, float centerZ, float radius,
+                                 float height, unsigned int seed) {
+        const float baseY = terrainHeight(centerX, centerZ);
+        const unsigned int palette = seed % 3u;
+        for (int layer = 0; layer < 2; ++layer) {
+            const float y0 = baseY + height * layer * 0.5f;
+            const float y1 = baseY + height * (layer + 1) * 0.5f;
+            for (int slice = 0; slice < rockSlices; ++slice) {
+                const int next = (slice + 1) % rockSlices;
+                const float a0 = 2.0f * PI * slice / rockSlices;
+                const float a1 = 2.0f * PI * next / rockSlices;
+                const float wobble0 = 0.82f + 0.18f *
+                    static_cast<float>((seed + slice * 13u) % 7u) / 6.0f;
+                const float wobble1 = 0.82f + 0.18f *
+                    static_cast<float>((seed + next * 13u) % 7u) / 6.0f;
+                const float r0 = radius * wobble0 * (layer == 0 ? 1.08f : 0.92f);
+                const float r1 = radius * wobble1 * (layer == 0 ? 1.08f : 0.92f);
+                const MeshVertex a{centerX + std::cos(a0) * r0, y0,
+                                   centerZ + std::sin(a0) * r0,
+                                   std::cos(a0), 0.35f, std::sin(a0),
+                                   rockColors[palette][0], rockColors[palette][1], rockColors[palette][2]};
+                const MeshVertex b{centerX + std::cos(a0) * r0, y1,
+                                   centerZ + std::sin(a0) * r0,
+                                   std::cos(a0), 0.35f, std::sin(a0),
+                                   rockColors[palette][0], rockColors[palette][1], rockColors[palette][2]};
+                const MeshVertex c{centerX + std::cos(a1) * r1, y1,
+                                   centerZ + std::sin(a1) * r1,
+                                   std::cos(a1), 0.35f, std::sin(a1),
+                                   rockColors[palette][0], rockColors[palette][1], rockColors[palette][2]};
+                const MeshVertex d{centerX + std::cos(a1) * r1, y0,
+                                   centerZ + std::sin(a1) * r1,
+                                   std::cos(a1), 0.35f, std::sin(a1),
+                                   rockColors[palette][0], rockColors[palette][1], rockColors[palette][2]};
+                rockVertices.insert(rockVertices.end(), {a, b, c, a, c, d});
+            }
+        }
+    };
+    const float ruinClusters[][2] = {
+        {-13.0f, -9.0f}, {-9.0f, 13.0f}, {8.0f, -14.0f},
+        {14.0f, 8.0f}, {-15.0f, 5.0f}, {3.0f, 15.0f}
+    };
+    for (unsigned int cluster = 0; cluster < 6u; ++cluster) {
+        for (unsigned int piece = 0; piece < 5u; ++piece) {
+            const unsigned int seed = cluster * 92837111u + piece * 689287499u;
+            const float angle = static_cast<float>(seed % 628u) * 0.01f;
+            const float spread = 0.25f + 2.0f * ((seed / 101u) % 100u) / 100.0f;
+            const float x = ruinClusters[cluster][0] + std::cos(angle) * spread;
+            const float z = ruinClusters[cluster][1] + std::sin(angle) * spread;
+            if (std::sqrt(x * x + z * z) < lakeRadius + 0.5f) continue;
+            addRuinRock(x, z, 0.22f + 0.16f * (seed % 5u),
+                        0.55f + 0.75f * ((seed / 17u) % 7u) / 6.0f, seed);
         }
     }
 
@@ -498,8 +667,10 @@ void buildGeometryVBOs() {
     }
 
     std::vector<WaterVertex> waterVertices;
-    constexpr int waterResolution = 48;
-    constexpr float waterExtent = 30.0f;
+    // Local water plane: a 12x12 square comfortably covers the larger lake
+    // without carrying a map-sized water VBO.
+    constexpr int waterResolution = 40;
+    constexpr float waterExtent = 12.0f;
     const auto addWaterVertex = [&](float x, float z) {
         waterVertices.push_back({x, water::waterSurfaceHeight(x, z), z,
                                  0.0f, 1.0f, 0.0f,
@@ -531,12 +702,115 @@ void buildGeometryVBOs() {
                  landVertices.data(), GL_STATIC_DRAW);
     landVertexCount = static_cast<GLsizei>(landVertices.size());
 
+    glGenBuffers(1, &rockVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, rockVBO);
+    glBufferData(GL_ARRAY_BUFFER,
+                 static_cast<GLsizeiptr>(rockVertices.size() * sizeof(MeshVertex)),
+                 rockVertices.data(), GL_STATIC_DRAW);
+    rockVertexCount = static_cast<GLsizei>(rockVertices.size());
+
+    // Shared low-poly meadow props. They are clustered to keep the landscape
+    // natural while using one static VBO and one draw call.
+    std::vector<MeshVertex> propVertices;
+    constexpr int propSlices = 6;
+    constexpr int propRings = 3;
+    const auto addPropSphere = [&](float centerX, float centerY, float centerZ,
+                                   float radiusX, float radiusY, float radiusZ,
+                                   const float color[3]) {
+        for (int ring = 0; ring < propRings; ++ring) {
+            const float lower = -PI * 0.5f + PI * ring / propRings;
+            const float upper = -PI * 0.5f + PI * (ring + 1) / propRings;
+            for (int slice = 0; slice < propSlices; ++slice) {
+                const float a0 = 2.0f * PI * slice / propSlices;
+                const float a1 = 2.0f * PI * (slice + 1) / propSlices;
+                const auto vertex = [&](float latitude, float angle) {
+                    const float horizontal = std::cos(latitude);
+                    const float nx = horizontal * std::cos(angle);
+                    const float ny = std::sin(latitude);
+                    const float nz = horizontal * std::sin(angle);
+                    return MeshVertex{centerX + radiusX * nx,
+                                      centerY + radiusY * ny,
+                                      centerZ + radiusZ * nz,
+                                      nx, ny, nz, color[0], color[1], color[2]};
+                };
+                const MeshVertex a = vertex(lower, a0);
+                const MeshVertex b = vertex(upper, a0);
+                const MeshVertex c = vertex(upper, a1);
+                const MeshVertex d = vertex(lower, a1);
+                propVertices.insert(propVertices.end(), {a, b, c, a, c, d});
+            }
+        }
+    };
+    const float bushColor[][3] = {{0.08f, 0.27f, 0.07f}, {0.14f, 0.36f, 0.10f},
+                                  {0.20f, 0.40f, 0.12f}};
+    const float pebbleColor[][3] = {{0.34f, 0.32f, 0.28f}, {0.46f, 0.40f, 0.32f}};
+    const float mushroomColor[][3] = {{0.78f, 0.16f, 0.10f}, {0.94f, 0.68f, 0.12f},
+                                      {0.62f, 0.20f, 0.68f}};
+    const float flowerColor[][3] = {{1.00f, 0.25f, 0.55f}, {0.92f, 0.08f, 0.10f},
+                                    {1.00f, 0.72f, 0.08f}, {0.55f, 0.16f, 0.82f}};
+    const float propClusters[][2] = {
+        {-14.0f, -12.0f}, {-8.0f, -15.0f}, {4.0f, -14.0f}, {14.0f, -10.0f},
+        {-15.0f, 2.0f}, {14.0f, 4.0f}, {-12.0f, 13.0f}, {4.0f, 14.0f},
+        {14.0f, 13.0f}, {-17.0f, -3.0f}, {17.0f, -3.0f},
+        {-2.0f, 17.0f}, {1.0f, -18.0f},
+        {-25.0f, -20.0f}, {-18.0f, -26.0f}, {5.0f, -27.0f},
+        {23.0f, -22.0f}, {26.0f, -5.0f}, {25.0f, 18.0f},
+        {12.0f, 25.0f}, {-8.0f, 26.0f}, {-25.0f, 15.0f}, {-27.0f, 0.0f}
+    };
+    propVertices.reserve(50000u);
+    constexpr unsigned int propClusterCount = sizeof(propClusters) /
+                                              sizeof(propClusters[0]);
+    for (unsigned int cluster = 0; cluster < propClusterCount; ++cluster) {
+        const float cx = propClusters[cluster][0];
+        const float cz = propClusters[cluster][1];
+        const unsigned int clusterType = cluster % 3u;
+        if (clusterType != 1u) for (unsigned int item = 0; item < 5u; ++item) {
+            const unsigned int seed = cluster * 92837111u + item * 689287499u;
+            const float angle = static_cast<float>(seed % 628u) * 0.01f;
+            const float spread = 0.25f + 1.2f * ((seed / 101u) % 100u) / 100.0f;
+            const float x = cx + std::cos(angle) * spread;
+            const float z = cz + std::sin(angle) * spread;
+            if (std::sqrt(x * x + z * z) < lakeRadius + 0.5f) continue;
+            const float y = terrainHeight(x, z);
+            addPropSphere(x, y + 0.28f, z, 0.38f, 0.32f, 0.38f,
+                          bushColor[(seed / 7u) % 3u]);
+        }
+        if (clusterType != 0u) for (unsigned int item = 0; item < 4u; ++item) {
+            const unsigned int seed = cluster * 31337u + item * 7919u;
+            const float angle = static_cast<float>(seed % 628u) * 0.01f;
+            const float x = cx + std::cos(angle) * (0.4f + item * 0.55f);
+            const float z = cz + std::sin(angle) * (0.4f + item * 0.55f);
+            if (std::sqrt(x * x + z * z) < lakeRadius + 0.5f) continue;
+            const float y = terrainHeight(x, z);
+            addPropSphere(x, y + 0.12f, z, 0.10f, 0.16f, 0.10f,
+                          pebbleColor[seed % 2u]);
+            addPropSphere(x, y + 0.30f, z, 0.20f, 0.09f, 0.20f,
+                          mushroomColor[(seed / 3u) % 3u]);
+        }
+        if (clusterType != 1u) for (unsigned int item = 0; item < 14u; ++item) {
+            const unsigned int seed = cluster * 15485863u + item * 32452843u;
+            const float angle = static_cast<float>(seed % 628u) * 0.01f;
+            const float spread = 0.3f + 1.8f * ((seed / 97u) % 100u) / 100.0f;
+            const float x = cx + std::cos(angle) * spread;
+            const float z = cz + std::sin(angle) * spread;
+            if (std::sqrt(x * x + z * z) < lakeRadius + 0.5f) continue;
+            addPropSphere(x, terrainHeight(x, z) + 0.30f, z,
+                          0.055f, 0.055f, 0.055f, flowerColor[seed % 4u]);
+        }
+    }
+
+    glGenBuffers(1, &propVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, propVBO);
+    glBufferData(GL_ARRAY_BUFFER,
+                 static_cast<GLsizeiptr>(propVertices.size() * sizeof(MeshVertex)),
+                 propVertices.data(), GL_STATIC_DRAW);
+    propVertexCount = static_cast<GLsizei>(propVertices.size());
+
     glGenBuffers(1, &grassVBO);
     glBindBuffer(GL_ARRAY_BUFFER, grassVBO);
-    grassBaseVertices = grassVertices;
     glBufferData(GL_ARRAY_BUFFER,
                  static_cast<GLsizeiptr>(grassVertices.size() * sizeof(MeshVertex)),
-                 grassVertices.data(), GL_DYNAMIC_DRAW);
+                 grassVertices.data(), GL_STATIC_DRAW);
     grassVertexCount = static_cast<GLsizei>(grassVertices.size());
 
     glGenBuffers(1, &islandGrassVBO);
@@ -595,6 +869,8 @@ void display() {
     glScalef(scene::mapScale, scene::mapScale, scene::mapScale);
     water::drawWater();
     terrain::drawLandmass();
+    terrain::drawRocks();
+    terrain::drawProps();
     terrain::drawGrass();
     floating_islands::drawFloatingIslandRings();
     glPopMatrix();
