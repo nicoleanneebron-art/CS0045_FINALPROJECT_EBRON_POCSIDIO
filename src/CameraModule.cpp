@@ -111,18 +111,18 @@ namespace {
             pushOutsideSphere(x, bodyY, z, islandX, islandY, islandZ,
                 islandRadius + butterflyRadius);
         }
-    const float centralHover = std::sin(scene_state::elapsedSeconds * 1.15f + 0.2f) * 0.10f;
-    const float fountainBaseY = (1.25f + centralHover) * scene::mapScale;
-    const float fountainTopY = fountainBaseY + 4.20f;
-    const float fountainRadius = 2.75f;
-    const float fountainDistance = std::sqrt(x * x + z * z);
-    if (bodyY >= fountainBaseY && bodyY <= fountainTopY &&
-        fountainDistance < fountainRadius + butterflyRadius) {
-        const float safeDistance = fountainRadius + butterflyRadius;
-        if (fountainDistance < 0.001f) x = safeDistance;
+        const float centralHover = std::sin(scene_state::elapsedSeconds * 1.15f + 0.2f) * 0.10f;
+        const float fountainBaseY = (1.25f + centralHover) * scene::mapScale;
+        const float fountainTopY = fountainBaseY + 4.20f;
+        const float fountainRadius = 2.75f;
+        const float fountainDistance = std::sqrt(x * x + z * z);
+        if (bodyY >= fountainBaseY && bodyY <= fountainTopY &&
+            fountainDistance < fountainRadius + butterflyRadius) {
+            const float safeDistance = fountainRadius + butterflyRadius;
+            if (fountainDistance < 0.001f) x = safeDistance;
             else {
-            x = x / fountainDistance * safeDistance;
-            z = z / fountainDistance * safeDistance;
+                x = x / fountainDistance * safeDistance;
+                z = z / fountainDistance * safeDistance;
             }
         }
         y = bodyY + 1.50f;
@@ -260,8 +260,8 @@ namespace camera {
             return;
         }
         const float freeLookTarget = freeLookHeld && scene_state::thirdPersonView ? 1.0f : 0.0f;
-    const float freeLookResponse = 1.0f - std::exp(-8.0f * deltaSeconds);
-    freeLookBlend += (freeLookTarget - freeLookBlend) * freeLookResponse;
+        const float freeLookResponse = 1.0f - std::exp(-8.0f * deltaSeconds);
+        freeLookBlend += (freeLookTarget - freeLookBlend) * freeLookResponse;
         const float yaw = scene_state::cameraYaw * scene::DEG_TO_RAD;
         const float pitch = scene_state::cameraPitch * scene::DEG_TO_RAD;
         const float forwardX = std::cos(yaw) * std::cos(pitch);
@@ -403,43 +403,43 @@ namespace camera {
         if ((key == 'm' || key == 'M') && !musicKeyWasDown) {
             audio::toggleMusicMute();
         }
-    if (key == 'c' || key == 'C') {
-    if (!freeLookHeld && scene_state::thirdPersonView) {
-        freeLookYaw = scene_state::cameraYaw;
-        freeLookPitch = -30.0f;
-    }
+        if (key == 'c' || key == 'C') {
+            if (!freeLookHeld && scene_state::thirdPersonView) {
+                freeLookYaw = scene_state::cameraYaw;
+                freeLookPitch = -30.0f;
+            }
 
-    freeLookHeld = scene_state::thirdPersonView;
-}
+            freeLookHeld = scene_state::thirdPersonView;
+        }
     }
 
     void keyboardUp(unsigned char key, int, int) {
         scene_state::keys[key] = false;
-    if (key == 'w' || key == 'W') {
-        scene_state::keys['w'] = false;
-        scene_state::keys['W'] = false;
-    }
-    if (key == 'a' || key == 'A') {
-        scene_state::keys['a'] = false;
-        scene_state::keys['A'] = false;
-    }
-    if (key == 's' || key == 'S') {
-        scene_state::keys['s'] = false;
-        scene_state::keys['S'] = false;
-    }
-    if (key == 'd' || key == 'D') {
-        scene_state::keys['d'] = false;
-        scene_state::keys['D'] = false;
-    }
-    if (key == 'm' || key == 'M') {
-        scene_state::keys['m'] = false;
-        scene_state::keys['M'] = false;
-    }
-    if (key == 'c' || key == 'C') {
-    freeLookHeld = false;
-    scene_state::keys['c'] = false;
-    scene_state::keys['C'] = false;
-}
+        if (key == 'w' || key == 'W') {
+            scene_state::keys['w'] = false;
+            scene_state::keys['W'] = false;
+        }
+        if (key == 'a' || key == 'A') {
+            scene_state::keys['a'] = false;
+            scene_state::keys['A'] = false;
+        }
+        if (key == 's' || key == 'S') {
+            scene_state::keys['s'] = false;
+            scene_state::keys['S'] = false;
+        }
+        if (key == 'd' || key == 'D') {
+            scene_state::keys['d'] = false;
+            scene_state::keys['D'] = false;
+        }
+        if (key == 'm' || key == 'M') {
+            scene_state::keys['m'] = false;
+            scene_state::keys['M'] = false;
+        }
+        if (key == 'c' || key == 'C') {
+            freeLookHeld = false;
+            scene_state::keys['c'] = false;
+            scene_state::keys['C'] = false;
+        }
     }
 
     void specialDown(int key, int, int) {
@@ -508,7 +508,8 @@ namespace camera {
             freeLookYaw += static_cast<float>(deltaX) * sensitivity;
             freeLookPitch -= static_cast<float>(deltaY) * sensitivity;
             freeLookPitch = std::fmax(-80.0f, std::fmin(80.0f, freeLookPitch));
-        } else {
+        }
+        else {
             scene_state::cameraYaw += static_cast<float>(deltaX) * sensitivity;
             scene_state::cameraPitch -= static_cast<float>(deltaY) * sensitivity;
             scene_state::cameraPitch = std::fmax(
