@@ -881,7 +881,8 @@ void display() {
     if (scene_state::thirdPersonView) {
         const float butterflyHeight = scene_state::cameraY - 1.50f;
         butterfly::drawButterfly(scene_state::cameraX, butterflyHeight,
-                                 scene_state::cameraZ, scene_state::cameraYaw);
+                                 scene_state::cameraZ, scene_state::cameraYaw,
+                                 scene_state::cameraPitch);
     }
 
     glutSwapBuffers();
