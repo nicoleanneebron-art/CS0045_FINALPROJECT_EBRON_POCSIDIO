@@ -7,5 +7,6 @@ void drawRocks();
 void drawProps();
 void drawGrass();
 void drawMound();
+void drawScenicDetails();
 
 }

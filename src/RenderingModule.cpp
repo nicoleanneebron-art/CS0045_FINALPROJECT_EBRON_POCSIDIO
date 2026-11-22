@@ -16,9 +16,9 @@ void setMaterial(const Color& diffuse, const Color& ambient, float shininess) {
 }
 
 void initializeLighting() {
-    const GLfloat ambient[] = {0.28f, 0.34f, 0.38f, 1.0f};
-    const GLfloat diffuse[] = {1.0f, 0.93f, 0.72f, 1.0f};
-    const GLfloat specular[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    const GLfloat ambient[] = {0.34f, 0.29f, 0.36f, 1.0f};
+    const GLfloat diffuse[] = {1.0f, 0.84f, 0.64f, 1.0f};
+    const GLfloat specular[] = {1.0f, 0.90f, 0.74f, 1.0f};
     glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambient);
     glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse);
     glLightfv(GL_LIGHT0, GL_SPECULAR, specular);

@@ -7,6 +7,7 @@
 #include <cstdlib>
 
 #include "CameraModule.h"
+#include "AudioModule.h"
 #include "SceneConfig.h"
 #include "SceneState.h"
 
@@ -31,6 +32,14 @@ namespace {
             glutPositionWindow(windowedX, windowedY);
         }
         isFullScreen = !isFullScreen;
+    }
+
+    bool hasGameKeyboardFocus() {
+        const HWND foregroundWindow = GetForegroundWindow();
+        if (foregroundWindow == nullptr) return false;
+        DWORD foregroundProcessId = 0;
+        GetWindowThreadProcessId(foregroundWindow, &foregroundProcessId);
+        return foregroundProcessId == GetCurrentProcessId();
     }
 
     void getIslandCollision(int index, float& centerX, float& centerY,
@@ -102,18 +111,18 @@ namespace {
             pushOutsideSphere(x, bodyY, z, islandX, islandY, islandZ,
                 islandRadius + butterflyRadius);
         }
-        const float centralHover = std::sin(scene_state::elapsedSeconds * 1.15f + 0.2f) * 0.10f;
-        const float treeBaseY = (1.25f + centralHover) * scene::mapScale;
-        const float treeTopY = treeBaseY + 12.0f;
-        const float treeRadius = 0.65f;
-        const float treeDistance = std::sqrt(x * x + z * z);
-        if (bodyY >= treeBaseY && bodyY <= treeTopY &&
-            treeDistance < treeRadius + butterflyRadius) {
-            const float safeDistance = treeRadius + butterflyRadius;
-            if (treeDistance < 0.001f) x = safeDistance;
+    const float centralHover = std::sin(scene_state::elapsedSeconds * 1.15f + 0.2f) * 0.10f;
+    const float fountainBaseY = (1.25f + centralHover) * scene::mapScale;
+    const float fountainTopY = fountainBaseY + 4.20f;
+    const float fountainRadius = 2.75f;
+    const float fountainDistance = std::sqrt(x * x + z * z);
+    if (bodyY >= fountainBaseY && bodyY <= fountainTopY &&
+        fountainDistance < fountainRadius + butterflyRadius) {
+        const float safeDistance = fountainRadius + butterflyRadius;
+        if (fountainDistance < 0.001f) x = safeDistance;
             else {
-                x = x / treeDistance * safeDistance;
-                z = z / treeDistance * safeDistance;
+            x = x / fountainDistance * safeDistance;
+            z = z / fountainDistance * safeDistance;
             }
         }
         y = bodyY + 1.50f;
@@ -167,8 +176,29 @@ namespace camera {
     static bool upArrowDown = false;
     static bool downArrowDown = false;
     static bool returningToGround = false;
+    static bool freeLookHeld = false;
+    static float freeLookYaw = 0.0f;
+    static float freeLookPitch = -30.0f;
+    static float freeLookBlend = 0.0f;
+    static float velocityX = 0.0f;
+    static float velocityY = 0.0f;
+    static float velocityZ = 0.0f;
     constexpr float lowHoverHeight = 1.50f;
     constexpr float returnDescentSpeed = 2.50f;
+
+    static void resetMovementInput() {
+        for (int key = 0; key < 256; ++key) scene_state::keys[key] = false;
+        leftArrowDown = false;
+        rightArrowDown = false;
+        upArrowDown = false;
+        downArrowDown = false;
+        freeLookHeld = false;
+        freeLookBlend = 0.0f;
+        scene_state::mouseLookInitialized = false;
+        velocityX = 0.0f;
+        velocityY = 0.0f;
+        velocityZ = 0.0f;
+    }
 
     void applyExplorationCamera() {
         glLoadIdentity();
@@ -189,10 +219,30 @@ namespace camera {
             adjustChaseCamera(scene_state::cameraX, butterflyY + 0.20f,
                 scene_state::cameraZ, adjustedEyeX, adjustedEyeY,
                 adjustedEyeZ);
+            float targetX = scene_state::cameraX + lookX * 1.50f;
+            float targetY = butterflyY + 0.15f + lookY * 1.00f;
+            float targetZ = scene_state::cameraZ + lookZ * 1.50f;
+
+            if (freeLookBlend > 0.001f) {
+                const float orbitYaw = freeLookYaw * scene::DEG_TO_RAD;
+                const float orbitPitch = freeLookPitch * scene::DEG_TO_RAD;
+                const float orbitX = std::cos(orbitYaw) * std::cos(orbitPitch);
+                const float orbitY = std::sin(orbitPitch);
+                const float orbitZ = std::sin(orbitYaw) * std::cos(orbitPitch);
+                float freeEyeX = scene_state::cameraX - orbitX * 5.20f;
+                float freeEyeY = butterflyY - orbitY * 5.20f;
+                float freeEyeZ = scene_state::cameraZ - orbitZ * 5.20f;
+                adjustChaseCamera(scene_state::cameraX, butterflyY + 0.20f,
+                    scene_state::cameraZ, freeEyeX, freeEyeY, freeEyeZ);
+                adjustedEyeX += (freeEyeX - adjustedEyeX) * freeLookBlend;
+                adjustedEyeY += (freeEyeY - adjustedEyeY) * freeLookBlend;
+                adjustedEyeZ += (freeEyeZ - adjustedEyeZ) * freeLookBlend;
+                targetX += (scene_state::cameraX - targetX) * freeLookBlend;
+                targetY += (butterflyY + 0.20f - targetY) * freeLookBlend;
+                targetZ += (scene_state::cameraZ - targetZ) * freeLookBlend;
+            }
             gluLookAt(adjustedEyeX, adjustedEyeY, adjustedEyeZ,
-                scene_state::cameraX + lookX * 1.50f,
-                butterflyY + 0.15f + lookY * 1.00f,
-                scene_state::cameraZ + lookZ * 1.50f,
+                targetX, targetY, targetZ,
                 0.0f, 1.0f, 0.0f);
             return;
         }
@@ -204,9 +254,14 @@ namespace camera {
     }
 
     void update(float deltaSeconds) {
-        static float velocityX = 0.0f;
-        static float velocityY = 0.0f;
-        static float velocityZ = 0.0f;
+        // Process-based focus detection also works after FreeGLUT fullscreen changes.
+        if (!hasGameKeyboardFocus()) {
+            resetMovementInput();
+            return;
+        }
+        const float freeLookTarget = freeLookHeld && scene_state::thirdPersonView ? 1.0f : 0.0f;
+    const float freeLookResponse = 1.0f - std::exp(-8.0f * deltaSeconds);
+    freeLookBlend += (freeLookTarget - freeLookBlend) * freeLookResponse;
         const float yaw = scene_state::cameraYaw * scene::DEG_TO_RAD;
         const float pitch = scene_state::cameraPitch * scene::DEG_TO_RAD;
         const float forwardX = std::cos(yaw) * std::cos(pitch);
@@ -266,9 +321,6 @@ namespace camera {
         velocityX += (inputX - velocityX) * response;
         velocityY += (inputY - velocityY) * response;
         velocityZ += (inputZ - velocityZ) * response;
-        const float previousX = scene_state::cameraX;
-        const float previousY = scene_state::cameraY;
-        const float previousZ = scene_state::cameraZ;
         scene_state::cameraX += velocityX * deltaSeconds;
         scene_state::cameraY += velocityY * deltaSeconds;
         scene_state::cameraZ += velocityZ * deltaSeconds;
@@ -280,11 +332,7 @@ namespace camera {
         scene_state::cameraX = std::fmax(-17.0f, std::fmin(17.0f, scene_state::cameraX));
         scene_state::cameraY = std::fmax(0.0f, std::fmin(20.0f, scene_state::cameraY));
         scene_state::cameraZ = std::fmax(-17.0f, std::fmin(17.0f, scene_state::cameraZ));
-        if (deltaSeconds > 0.0f) {
-            velocityX = (scene_state::cameraX - previousX) / deltaSeconds;
-            velocityY = (scene_state::cameraY - previousY) / deltaSeconds;
-            velocityZ = (scene_state::cameraZ - previousZ) / deltaSeconds;
-        }
+        // Collision only corrects the position. It must not become a new movement velocity.
         // Stop small residual movement when no keys are held.
         if (!manualMovement && !returningToGround) {
             const float stopThreshold = 0.05f;
@@ -307,6 +355,7 @@ namespace camera {
         float delta = now - scene_state::lastFrameSeconds;
         scene_state::lastFrameSeconds = now;
         delta = std::fmin(delta, 0.05f);
+        audio::updateMusic();
         update(delta);
         glutPostRedisplay();
         // Keep redraw scheduling at 60 Hz so slow frames cannot backlog timer
@@ -337,9 +386,13 @@ namespace camera {
     void keyboardDown(unsigned char key, int, int) {
         if (key == 27) std::exit(0);
         const bool wasDown = scene_state::keys[key];
+        const bool musicKeyWasDown = scene_state::keys['m'] || scene_state::keys['M'];
         scene_state::keys[key] = true;
         if ((key == 'f' || key == 'F') && !wasDown) {
             toggleFullScreen();
+            resetMovementInput();
+            // Keep F marked until its release so keyboard auto-repeat cannot retoggle.
+            scene_state::keys[key] = true;
         }
         if ((key == 'p' || key == 'P') && !wasDown) {
             scene_state::thirdPersonView = !scene_state::thirdPersonView;
@@ -347,10 +400,46 @@ namespace camera {
         if ((key == 'g' || key == 'G') && !wasDown) {
             returningToGround = scene_state::cameraY > lowHoverHeight;
         }
+        if ((key == 'm' || key == 'M') && !musicKeyWasDown) {
+            audio::toggleMusicMute();
+        }
+    if (key == 'c' || key == 'C') {
+    if (!freeLookHeld && scene_state::thirdPersonView) {
+        freeLookYaw = scene_state::cameraYaw;
+        freeLookPitch = -30.0f;
+    }
+
+    freeLookHeld = scene_state::thirdPersonView;
+}
     }
 
     void keyboardUp(unsigned char key, int, int) {
         scene_state::keys[key] = false;
+    if (key == 'w' || key == 'W') {
+        scene_state::keys['w'] = false;
+        scene_state::keys['W'] = false;
+    }
+    if (key == 'a' || key == 'A') {
+        scene_state::keys['a'] = false;
+        scene_state::keys['A'] = false;
+    }
+    if (key == 's' || key == 'S') {
+        scene_state::keys['s'] = false;
+        scene_state::keys['S'] = false;
+    }
+    if (key == 'd' || key == 'D') {
+        scene_state::keys['d'] = false;
+        scene_state::keys['D'] = false;
+    }
+    if (key == 'm' || key == 'M') {
+        scene_state::keys['m'] = false;
+        scene_state::keys['M'] = false;
+    }
+    if (key == 'c' || key == 'C') {
+    freeLookHeld = false;
+    scene_state::keys['c'] = false;
+    scene_state::keys['C'] = false;
+}
     }
 
     void specialDown(int key, int, int) {
@@ -415,10 +504,16 @@ namespace camera {
         const int deltaX = x - centerX;
         const int deltaY = y - centerY;
         constexpr float sensitivity = 0.16f;
-        scene_state::cameraYaw += static_cast<float>(deltaX) * sensitivity;
-        scene_state::cameraPitch -= static_cast<float>(deltaY) * sensitivity;
-        scene_state::cameraPitch = std::fmax(
-            -85.0f, std::fmin(85.0f, scene_state::cameraPitch));
+        if (freeLookHeld && scene_state::thirdPersonView) {
+            freeLookYaw += static_cast<float>(deltaX) * sensitivity;
+            freeLookPitch -= static_cast<float>(deltaY) * sensitivity;
+            freeLookPitch = std::fmax(-80.0f, std::fmin(80.0f, freeLookPitch));
+        } else {
+            scene_state::cameraYaw += static_cast<float>(deltaX) * sensitivity;
+            scene_state::cameraPitch -= static_cast<float>(deltaY) * sensitivity;
+            scene_state::cameraPitch = std::fmax(
+                -85.0f, std::fmin(85.0f, scene_state::cameraPitch));
+        }
 
         scene_state::lastMouseX = centerX;
         scene_state::lastMouseY = centerY;
