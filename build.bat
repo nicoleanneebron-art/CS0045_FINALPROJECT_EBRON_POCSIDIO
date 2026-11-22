@@ -48,7 +48,7 @@ if not exist "%MINGW%\lib\libglew32.a" (
   exit /b 1
 )
 
-"%COMPILER%" -O2 src\main.cpp src\Application.cpp src\RenderingModule.cpp src\SceneState.cpp src\GridModule.cpp src\CameraModule.cpp src\WaterModule.cpp src\FloatingIslandsModule.cpp src\TerrainModule.cpp src\SkyModule.cpp ^
+"%COMPILER%" -O2 src\main.cpp src\Application.cpp src\RenderingModule.cpp src\SceneState.cpp src\GridModule.cpp src\CameraModule.cpp src\AudioModule.cpp src\WaterModule.cpp src\FloatingIslandsModule.cpp src\TerrainModule.cpp src\SkyModule.cpp src\ButterflyModule.cpp src\CrystalModule.cpp ^
   -I"%MINGW%\include" -I"%~dp0include" -L"%MINGW%\lib" ^
   -lglew32 -lfreeglut -lopengl32 -lglu32 -lwinmm -lgdi32 ^
   -o DadahRangePrototype.exe

@@ -11,6 +11,9 @@
 #include "FloatingIslandsModule.h"
 #include "TerrainModule.h"
 #include "SkyModule.h"
+#include "ButterflyModule.h"
+#include "CrystalModule.h"
+#include "AudioModule.h"
 
 #include <algorithm>
 #include <cmath>
@@ -855,14 +858,14 @@ void buildGeometryVBOs() {
 
 void display() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    sky::drawSky();
     glMatrixMode(GL_MODELVIEW);
     // Keep animation time independent from camera movement and input updates.
     scene_state::elapsedSeconds =
         static_cast<float>(glutGet(GLUT_ELAPSED_TIME)) / 1000.0f;
     camera::applyExplorationCamera();
+    sky::drawSky();
 
-    GLfloat lightPosition[] = {-4.0f, 7.0f, 5.0f, 1.0f};
+    GLfloat lightPosition[] = {-5.0f, 8.0f, 3.0f, 1.0f};
     glLightfv(GL_LIGHT0, GL_POSITION, lightPosition);
 
     glPushMatrix();
@@ -872,25 +875,34 @@ void display() {
     terrain::drawRocks();
     terrain::drawProps();
     terrain::drawGrass();
+    terrain::drawScenicDetails();
     floating_islands::drawFloatingIslandRings();
+    crystal::drawCrystal();
     glPopMatrix();
+
+    if (scene_state::thirdPersonView) {
+        const float butterflyHeight = scene_state::cameraY - 1.50f;
+        butterfly::drawButterfly(scene_state::cameraX, butterflyHeight,
+                                 scene_state::cameraZ, scene_state::cameraYaw,
+                                 scene_state::cameraPitch);
+    }
 
     glutSwapBuffers();
 }
 
 void initialize() {
-    glClearColor(0.25f, 0.58f, 0.82f, 1.0f);
+    glClearColor(0.57f, 0.47f, 0.62f, 1.0f);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
     glEnable(GL_NORMALIZE);
     glShadeModel(GL_SMOOTH);
-    const GLfloat fogColor[] = {0.35f, 0.58f, 0.82f, 1.0f};
+    const GLfloat fogColor[] = {0.70f, 0.56f, 0.65f, 1.0f};
     glEnable(GL_FOG);
     glFogi(GL_FOG_MODE, GL_LINEAR);
     glFogfv(GL_FOG_COLOR, fogColor);
-    glFogf(GL_FOG_START, 20.0f);
-    glFogf(GL_FOG_END, 72.0f);
+    glFogf(GL_FOG_START, 22.0f);
+    glFogf(GL_FOG_END, 68.0f);
     glHint(GL_FOG_HINT, GL_NICEST);
 
     rendering::initializeLighting();
@@ -913,14 +925,18 @@ int run(int argc, char** argv) {
 
     initialize();
     buildGeometryVBOs();
+    audio::initializeMusic();
+    std::atexit(audio::shutdownMusic);
     glutDisplayFunc(display);
     glutReshapeFunc(camera::reshape);
     glutKeyboardFunc(camera::keyboardDown);
     glutKeyboardUpFunc(camera::keyboardUp);
     glutSpecialFunc(camera::specialDown);
+    glutSpecialUpFunc(camera::specialUp);
     glutMouseFunc(camera::mouseButton);
     glutPassiveMotionFunc(camera::mouseLook);
     glutEntryFunc(camera::mouseEntry);
+    glutSetCursor(GLUT_CURSOR_NONE);
     glutTimerFunc(16, camera::timer, 0);
     glutMainLoop();
     return 0;
