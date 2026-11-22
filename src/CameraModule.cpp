@@ -53,12 +53,15 @@ void applyExplorationCamera() {
 
     if (scene_state::thirdPersonView) {
         const float butterflyY = scene_state::cameraY - 1.50f;
-        const float eyeX = scene_state::cameraX - std::cos(yaw) * 4.5f;
-        const float eyeY = butterflyY + 1.3f;
-        const float eyeZ = scene_state::cameraZ - std::sin(yaw) * 4.5f;
+        const float horizontalX = std::cos(yaw);
+        const float horizontalZ = std::sin(yaw);
+        const float eyeX = scene_state::cameraX - horizontalX * 4.5f;
+        const float eyeY = butterflyY + 2.75f;
+        const float eyeZ = scene_state::cameraZ - horizontalZ * 4.5f;
         gluLookAt(eyeX, eyeY, eyeZ,
-                  eyeX + lookX * 6.0f, eyeY + lookY * 6.0f,
-                  eyeZ + lookZ * 6.0f,
+                  scene_state::cameraX + lookX * 1.50f,
+                  butterflyY + 0.15f + lookY * 1.00f,
+                  scene_state::cameraZ + lookZ * 1.50f,
                   0.0f, 1.0f, 0.0f);
         return;
     }
@@ -207,6 +210,14 @@ void specialUp(int key, int, int) {
     if (key == GLUT_KEY_RIGHT) rightArrowDown = false;
     if (key == GLUT_KEY_UP) upArrowDown = false;
     if (key == GLUT_KEY_DOWN) downArrowDown = false;
+}
+
+bool isForwardInputActive() {
+    return scene_state::keys['w'] || scene_state::keys['W'] || upArrowDown;
+}
+
+bool isReturningToGround() {
+    return returningToGround;
 }
 
 void mouseButton(int button, int state, int, int) {
