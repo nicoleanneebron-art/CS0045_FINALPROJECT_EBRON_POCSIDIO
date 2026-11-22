@@ -20,6 +20,9 @@ int lastMouseY = 0;
 bool mouseLookInitialized = false;
 bool mouseInsideWindow = false;
 bool groundLevelView = false;
+bool thirdPersonView = true;
+float butterflyScale = 0.78f;
+float crystalAngle = 0.0f;
 
 GLuint gridVBO = 0;
 GLsizei gridVertexCount = 0;

@@ -47,6 +47,9 @@ extern int lastMouseY;
 extern bool mouseLookInitialized;
 extern bool mouseInsideWindow;
 extern bool groundLevelView;
+extern bool thirdPersonView;
+extern float butterflyScale;
+extern float crystalAngle;
 
 extern GLuint gridVBO;
 extern GLsizei gridVertexCount;

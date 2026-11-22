@@ -11,6 +11,8 @@
 #include "FloatingIslandsModule.h"
 #include "TerrainModule.h"
 #include "SkyModule.h"
+#include "ButterflyModule.h"
+#include "CrystalModule.h"
 
 #include <algorithm>
 #include <cmath>
@@ -873,7 +875,14 @@ void display() {
     terrain::drawProps();
     terrain::drawGrass();
     floating_islands::drawFloatingIslandRings();
+    crystal::drawCrystal();
     glPopMatrix();
+
+    if (scene_state::thirdPersonView) {
+        const float butterflyHeight = scene_state::cameraY - 1.50f;
+        butterfly::drawButterfly(scene_state::cameraX, butterflyHeight,
+                                 scene_state::cameraZ, scene_state::cameraYaw);
+    }
 
     glutSwapBuffers();
 }
@@ -918,9 +927,11 @@ int run(int argc, char** argv) {
     glutKeyboardFunc(camera::keyboardDown);
     glutKeyboardUpFunc(camera::keyboardUp);
     glutSpecialFunc(camera::specialDown);
+    glutSpecialUpFunc(camera::specialUp);
     glutMouseFunc(camera::mouseButton);
     glutPassiveMotionFunc(camera::mouseLook);
     glutEntryFunc(camera::mouseEntry);
+    glutSetCursor(GLUT_CURSOR_NONE);
     glutTimerFunc(16, camera::timer, 0);
     glutMainLoop();
     return 0;
